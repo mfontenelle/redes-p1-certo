@@ -23,8 +23,19 @@ def dados_recebidos(conexao, dados):
 def conexao_aceita(conexao):
     print(conexao, 'nova conexão')
     conexao.registrar_recebedor(dados_recebidos)
+    
+def join_canal(canal, connec):
+    aux = canal
+    canal = canal.lower()
+    if canal not in servidor.canais:
+        servidor.canais[canal] = []
+    if connec not in servidor.canais[canal]:
+        servidor.canais[canal].append(connec)
+ #incompleto
 
 
 servidor = Servidor(6667)
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
+servidor.canais = {}
+servidor.nicknames = {}
