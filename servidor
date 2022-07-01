@@ -33,6 +33,15 @@ def join_canal(canal, connec):
         servidor.canais[canal].append(connec)
  #incompleto
 
+def enviamsg (de, para, msg):
+    if para[0] == 35:
+        if para.lower() in servidor.canais:
+            for i in servidor.canais[para.lower()]:
+                if i.nickname != de:
+                    i.enviar(b' :%s PRIVMSG %s :%s\r\n' % (de, para, msg))
+    else if
+    # incompleto
+
 
 servidor = Servidor(6667)
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
