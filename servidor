@@ -104,15 +104,35 @@ def resolve_residual_data(conec, dados):
         else:
             return dados.split(b'\n')[:-1]
         
+def limpa(var):
+    return var.replace(b'\n', b'').replace(b'\r', b'')
+
+def insere_nickname(nick, conec):
+    servidor.nicknames[nick.lower()] = conec
+    return
+
+def sub_nick(antigo, novo, conec):
+    servidor.nicknames[novo.lower()]=conec
+    del servidor.nicknames[antigo.lower()]
+    return
+
+def deixa_canal(canal, conec):
+    chan = servidor.canais[canal.lower()]
+    for i in chan:
+        i.enviar(b':%s PART %s\r\n' % (conec.nick, canal))
+    chan.remove(conec)
+    conec.canal.remove(canal)
+    return
+        
 def executar(conec, dados):
     separa_dados = dados.split(b' ')
     comando = separa_dados[0]
     if comando == b'PING':
-        resto = clean(dados.split(b' ', 1)[1])
+        resto = limpa(dados.split(b' ', 1)[1])
         conec.enviar(b':server PONG server:' + resto+b'\n)
         return
     else if comando == b'NICK:
-        resto = clean(dados.split(b' ', 1)[1])
+        resto = limpa(dados.split(b' ', 1)[1])
         if resto.lower() in servidor.nicknames:
               if hasattr(conec, 'nick'):
                       conec.enviar(b':server 433 %s %s :Nickname is already in use\r\n' % (conec.nick, resto))
@@ -136,16 +156,16 @@ def executar(conec, dados):
               return
      else if comando == b'PRIVMSG':
          dest = separa_dados[1]
-         resto = clean(dados.split(b':', 1)[1])
+         resto = limpa(dados.split(b':', 1)[1])
          enviamsg(dest, conec.nick, resto)
      else if comando == b'JOIN':
-         resto = clean(dados.split(b' ', 1)[1])
+         resto = limpa(dados.split(b' ', 1)[1])
          if resto[0] != 35 or not validar_nome(resto[1:]):
                conec.enviar(b':server 403 canal :No such channel\r\n')
          else:
                join_channel(resto, conec)
      else if comando == b'PART':
-         resto = clean(dados.split(b' ', 1)[1])
+         resto = limpa(dados.split(b' ', 1)[1])
          leave_channel(resto, conec)
                        
 
