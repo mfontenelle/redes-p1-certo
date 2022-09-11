@@ -10,18 +10,18 @@ def validar_nome(nome):
 
 
 def sair(conexao):
-    for i in servidor.canais:
-        if conexao in servidor.canais[i]:
-            servidor.canais[i].remove(conexao)
+    for i in servidor.channels:
+        if conexao in servidor.channels[i]:
+            servidor.channels[i].remove(conexao)
     if hasattr(conexao, 'canal'):
         enviado = []
         for i in conexao.canal:
-            for j in servidor.canais[i]:
+            for j in servidor.channels[i]:
                 if j not in enviado:
                     enviado.append(j)
                     j.enviar(b':%s QUIT :Connection closed\r\n' % (conexao.nick))
     if hasattr(conexao, 'nick'):
-        del servidor.nicknames[conexao.nick.lower()]
+        del servidor.nicks[conexao.nick.lower()]
     conexao.fechar()
 
 
@@ -39,16 +39,16 @@ def conexao_aceita(conexao):
 def join_canal(canal, connec):
     aux = canal
     canal = canal.lower()
-    if canal not in servidor.canais:
-        servidor.canais[canal] = []
-    if connec not in servidor.canais[canal]:
-        servidor.canais[canal].append(connec)
+    if canal not in servidor.channels:
+        servidor.channels[canal] = []
+    if connec not in servidor.channels[canal]:
+        servidor.channels[canal].append(connec)
     if not hasattr(conec, 'canal'):
         conec.canal = []
     conec.canal.append(canal)
     
     membros = []
-    for i in servidor.canais[canal]:
+    for i in servidor.channels[canal]:
         i.enviar(b':%s JOIN :%s\r\n' % (conec.nick, aux))
         membros.append(i.nick)
     membros = sorted(membros)
@@ -67,16 +67,16 @@ def join_canal(canal, connec):
     
 def enviamsg (de, para, msg):
     if para[0] == 35:
-        if para.lower() in servidor.canais:
-            for i in servidor.canais[para.lower()]:
-                if i.nickname != de:
+        if para.lower() in servidor.channels:
+            for i in servidor.channels[para.lower()]:
+                if i.nick != de:
                     i.enviar(b' :%s PRIVMSG %s :%s\r\n' % (de, para, msg))
-    else if para.lower() in servidor.nicknames:
-        servidor.nicknames[para.lower()].enviar(b':%s PRIVMSG %s :%s\r\n' % (de, para, msg))
+    elif para.lower() in servidor.nicks:
+        servidor.nicks[para.lower()].enviar(b':%s PRIVMSG %s :%s\r\n' % (de, para, msg))
     return
 
 def resolve_commands(conec, dados):
-    if dados = None:
+    if dados == None:
         return
     for line in dados:
         executar(conec, line)
@@ -89,7 +89,7 @@ def resolve_residual_data(conec, dados):
         else:
             conec.residual_data = conec.residual_data + dados
         return None
-    else if dados[-1] != b'\n':
+    elif dados[-1] != b'\n':
         separado = dados.split(b'\n')
         if has_residual:
             residual_current = conec.residual_data
@@ -108,16 +108,16 @@ def limpa(var):
     return var.replace(b'\n', b'').replace(b'\r', b'')
 
 def insere_nickname(nick, conec):
-    servidor.nicknames[nick.lower()] = conec
+    servidor.nicks[nick.lower()] = conec
     return
 
 def sub_nick(antigo, novo, conec):
-    servidor.nicknames[novo.lower()]=conec
-    del servidor.nicknames[antigo.lower()]
+    servidor.nicks[novo.lower()]=conec
+    del servidor.nicks[antigo.lower()]
     return
 
 def deixa_canal(canal, conec):
-    chan = servidor.canais[canal.lower()]
+    chan = servidor.channels[canal.lower()]
     for i in chan:
         i.enviar(b':%s PART %s\r\n' % (conec.nick, canal))
     chan.remove(conec)
@@ -129,15 +129,15 @@ def executar(conec, dados):
     comando = separa_dados[0]
     if comando == b'PING':
         resto = limpa(dados.split(b' ', 1)[1])
-        conec.enviar(b':server PONG server:' + resto+b'\n)
+        conec.enviar(b':server PONG server:' + resto+b'\n')
         return
-    else if comando == b'NICK:
+    elif comando == b'NICK':
         resto = limpa(dados.split(b' ', 1)[1])
-        if resto.lower() in servidor.nicknames:
+        if resto.lower() in servidor.nicks:
               if hasattr(conec, 'nick'):
                       conec.enviar(b':server 433 %s %s :Nickname is already in use\r\n' % (conec.nick, resto))
               else:
-                      conec.enviar(b':server 433 * %s :Nickname is already in use\r\n' % (resto)
+                      conec.enviar(b':server 433 * %s :Nickname is already in use\r\n' % (resto))
               return
         if validar_nome(resto):
               if hasattr(conec, 'nick'):
@@ -150,21 +150,21 @@ def executar(conec, dados):
               return
         else:
               if hasattr(conec, 'nick'):
-                       conec.enviar(b':server 432 %s %s :Erroneous nicknames\r\n' % (conec.nick, resto)
+                       conec.enviar(b':server 432 %s %s :Erroneous nicknames\r\n' % (conec.nick, resto))
               else:
                        conec.enviar(b':server 432 * %s :Erroneous nickname\r\n' % (resto))
               return
-     else if comando == b'PRIVMSG':
+    elif comando == b'PRIVMSG':
          dest = separa_dados[1]
          resto = limpa(dados.split(b':', 1)[1])
          enviamsg(dest, conec.nick, resto)
-     else if comando == b'JOIN':
+    elif comando == b'JOIN':
          resto = limpa(dados.split(b' ', 1)[1])
          if resto[0] != 35 or not validar_nome(resto[1:]):
                conec.enviar(b':server 403 canal :No such channel\r\n')
          else:
                join_channel(resto, conec)
-     else if comando == b'PART':
+    elif comando == b'PART':
          resto = limpa(dados.split(b' ', 1)[1])
          leave_channel(resto, conec)
                        
@@ -173,5 +173,5 @@ def executar(conec, dados):
 servidor = Servidor(6667)
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
-servidor.canais = {}
-servidor.nicknames = {}
+servidor.channels = {}
+servidor.nicks = {}
